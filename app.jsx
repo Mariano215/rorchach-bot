@@ -1,11 +1,11 @@
 /* App shell — sidebar nav + active screen */
 
 const NAV = [
-  { id: "plates",    num: "I",   label: "The Plates",    Screen: () => <PlatesScreen onOpenChat={() => setRoute("couch")} onOpenVault={() => setRoute("vault")} /> },
-  { id: "couch",     num: "II",  label: "The Couch",     Screen: () => <CouchScreen /> },
-  { id: "diagnosis", num: "III", label: "The Diagnosis", Screen: () => <DiagnosisScreen /> },
-  { id: "notes",     num: "IV",  label: "The Notes",     Screen: () => <NotesScreen /> },
-  { id: "vault",     num: "V",   label: "The Vault",     Screen: () => <VaultScreen /> },
+  { id: "plates",    num: "I",   label: "The Plates" },
+  { id: "couch",     num: "II",  label: "The Couch" },
+  { id: "diagnosis", num: "III", label: "The Diagnosis" },
+  { id: "notes",     num: "IV",  label: "The Notes" },
+  { id: "vault",     num: "V",   label: "The Vault" },
 ];
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -22,7 +22,7 @@ function App() {
     document.documentElement.setAttribute("data-theme", tweaks.theme);
     document.documentElement.setAttribute("data-density", tweaks.density);
     document.documentElement.setAttribute("data-palette", tweaks.palette);
-  }, [tweaks]);
+  }, [tweaks.theme, tweaks.density, tweaks.palette]);
 
   const Screen = (() => {
     switch (route) {
@@ -69,31 +69,39 @@ function App() {
       </main>
 
       <TweaksPanel title="Tweaks">
-        <TweakSection title="Theme">
+        <TweakSection label="Theme">
           <TweakRadio
             value={tweaks.theme}
             options={[{ value: "paper", label: "Paper" }, { value: "midnight", label: "Midnight" }]}
             onChange={v => setTweak("theme", v)}
           />
         </TweakSection>
-        <TweakSection title="Density">
+        <TweakSection label="Density">
           <TweakRadio
             value={tweaks.density}
             options={[{ value: "compact", label: "Compact" }, { value: "default", label: "Default" }, { value: "roomy", label: "Roomy" }]}
             onChange={v => setTweak("density", v)}
           />
         </TweakSection>
-        <TweakSection title="Accent">
-          <TweakColor
-            value={tweaks.palette}
-            options={[
-              { value: "vermillion", color: "#b03126" },
-              { value: "indigo", color: "#2c3e91" },
-              { value: "moss", color: "#4a6b3a" },
-              { value: "amber", color: "#b47312" },
-            ]}
-            onChange={v => setTweak("palette", v)}
-          />
+        <TweakSection label="Accent">
+          {(() => {
+            const PALETTE_OPTIONS = [
+              { key: "vermillion", hex: "#b03126" },
+              { key: "indigo",     hex: "#2c3e91" },
+              { key: "moss",       hex: "#4a6b3a" },
+              { key: "amber",      hex: "#b47312" },
+            ];
+            return (
+              <TweakColor
+                value={PALETTE_OPTIONS.find(p => p.key === tweaks.palette)?.hex ?? "#b03126"}
+                options={PALETTE_OPTIONS.map(p => p.hex)}
+                onChange={hex => {
+                  const match = PALETTE_OPTIONS.find(p => p.hex === hex);
+                  if (match) setTweak("palette", match.key);
+                }}
+              />
+            );
+          })()}
         </TweakSection>
       </TweaksPanel>
     </div>

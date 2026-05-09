@@ -139,7 +139,17 @@
     let buf = "";
     while (true) {
       const { value, done } = await reader.read();
-      if (done) break;
+      if (done) {
+        if (buf.trim()) {
+          try {
+            const j = JSON.parse(buf.trim());
+            if (j?.message?.content) yield j.message.content;
+            if (j?.done) return;
+          } catch (_) {}
+        }
+        buf += dec.decode();
+        break;
+      }
       buf += dec.decode(value, { stream: true });
       let nl;
       while ((nl = buf.indexOf("\n")) >= 0) {
@@ -185,6 +195,7 @@
 
   // Decode Blob → AudioBuffer
   async function decode(ctx, blob) {
+    if (!ctx || ctx.state === 'closed') throw new DOMException('AudioContext is closed', 'InvalidStateError');
     const buf = await blob.arrayBuffer();
     return await ctx.decodeAudioData(buf);
   }
@@ -474,7 +485,7 @@
       emitAmp(0);
       setState("idle");
       // Auto-resume listening if the always-on tweak is set
-      if (cfg.alwaysOn) setTimeout(startListening, 250);
+      if (cfg.alwaysOn) setTimeout(() => { silenceMs = 0; startListening(); }, 250);
     }
 
     function playWithAmp(audioBuffer, signal) {
@@ -486,15 +497,16 @@
         const tBuf = new Uint8Array(a.fftSize);
         src.connect(a);
         a.connect(ctx.destination);
+        let tickActive = true;
         const tick = () => {
-          if (!ttsSrc) return;
+          if (!tickActive) return;
           const r = rms(a, tBuf);
           emitAmp(Math.min(1, r * 3.5));
           requestAnimationFrame(tick);
         };
         ttsSrc = src;
-        src.onended = () => { ttsSrc = null; emitAmp(0); resolve(); };
-        signal?.addEventListener("abort", () => { try { src.stop(); } catch (_) {} ttsSrc = null; resolve(); });
+        src.onended = () => { tickActive = false; ttsSrc = null; emitAmp(0); resolve(); };
+        signal?.addEventListener("abort", () => { tickActive = false; try { src.stop(); } catch (_) {} ttsSrc = null; resolve(); });
         src.start();
         tick();
       });

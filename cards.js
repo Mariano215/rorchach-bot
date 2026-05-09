@@ -66,7 +66,7 @@
         wob += Math.sin(t * Math.PI * (1 + o * 1.7) + seedOff + o) * (1 / o);
       }
       wob += (r() - 0.5) * 0.5;
-      let radFactor = 1 + wob * variance;
+      let radFactor = Math.max(0.1, 1 + wob * variance);
       if (i === 0 || i === HALF - 1) radFactor *= tipTaper * (0.85 + r() * 0.3);
       right.push([
         cx + Math.cos(theta) * rx * radFactor,

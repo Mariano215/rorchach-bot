@@ -150,26 +150,29 @@ const ProviderBlot = ({ provider, accent, className }) => {
 };
 
 /* Brand mark — a smaller, more iconic Rorschach blot for the app logo */
-const BrandMark = () => (
-  <svg viewBox="0 0 200 200" aria-hidden="true">
-    <defs>
-      <filter id="brand-ink" x="-30%" y="-30%" width="160%" height="160%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="3" />
-        <feDisplacementMap in="SourceGraphic" scale="60" />
-      </filter>
-      <clipPath id="brand-clip"><rect x="0" y="0" width="101" height="200" /></clipPath>
-      <g id="brand-half">
-        <g clipPath="url(#brand-clip)" filter="url(#brand-ink)">
-          <ellipse cx="92" cy="100" rx="32" ry="48" fill="currentColor" />
-          <ellipse cx="78" cy="72" rx="14" ry="14" fill="currentColor" />
-          <ellipse cx="80" cy="134" rx="14" ry="16" fill="currentColor" />
+const BrandMark = () => {
+  const uid = React.useId().replace(/:/g, '');
+  return (
+    <svg viewBox="0 0 200 200" aria-hidden="true">
+      <defs>
+        <filter id={`brand-ink-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" seed="3" />
+          <feDisplacementMap in="SourceGraphic" scale="60" />
+        </filter>
+        <clipPath id={`brand-clip-${uid}`}><rect x="0" y="0" width="101" height="200" /></clipPath>
+        <g id={`brand-half-${uid}`}>
+          <g clipPath={`url(#brand-clip-${uid})`} filter={`url(#brand-ink-${uid})`}>
+            <ellipse cx="92" cy="100" rx="32" ry="48" fill="currentColor" />
+            <ellipse cx="78" cy="72" rx="14" ry="14" fill="currentColor" />
+            <ellipse cx="80" cy="134" rx="14" ry="16" fill="currentColor" />
+          </g>
         </g>
-      </g>
-    </defs>
-    <use href="#brand-half" />
-    <use href="#brand-half" transform="translate(200,0) scale(-1,1)" />
-  </svg>
-);
+      </defs>
+      <use href={`#brand-half-${uid}`} />
+      <use href={`#brand-half-${uid}`} transform="translate(200,0) scale(-1,1)" />
+    </svg>
+  );
+};
 
 /* Big atmospheric inkblot for hero/empty states */
 const HeroBlot = ({ seed = 5 }) => (

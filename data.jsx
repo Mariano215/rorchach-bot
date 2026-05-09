@@ -92,11 +92,11 @@ const ROUTES = [
 ];
 
 const CONVERSATION = [
-  { role: "user", text: "Look at plate III. What do you see?" },
-  { role: "assistant", provider: "anthropic", model: "claude-sonnet-4-5",
+  { id: "msg-1", role: "user", text: "Look at plate III. What do you see?" },
+  { id: "msg-2", role: "assistant", provider: "anthropic", model: "claude-sonnet-4-5",
     text: "Two figures bent over a shared object — hands meeting at the center. The red flecks read as decorative rather than violent. Posture suggests collaboration, perhaps preparation of a meal." },
-  { role: "user", text: "Now route to whoever is cheapest and ask the same." },
-  { role: "assistant", provider: "gemini", model: "gemini-2.5-flash",
+  { id: "msg-3", role: "user", text: "Now route to whoever is cheapest and ask the same." },
+  { id: "msg-4", role: "assistant", provider: "gemini", model: "gemini-2.5-flash",
     text: "I observe symmetrical anthropomorphic forms. Bilateral mirror around the vertical axis. The chromatic break in the center could be interpreted as conflict, or simply as visual rhythm." },
 ];
 

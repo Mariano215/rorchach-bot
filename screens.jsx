@@ -60,9 +60,21 @@ const PlatesScreen = ({ onOpenChat, onOpenVault }) => {
 /* ------------------------------------------------------------------ THE COUCH */
 const ModelPicker = ({ value, onChange }) => {
   const [open, setOpen] = React.useState(false);
+  const containerRef = React.useRef(null);
   const provider = PROVIDERS.find(p => p.id === value.providerId);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (containerRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
   return (
-    <div className="model-picker" onClick={() => setOpen(o => !o)}>
+    <div className="model-picker" ref={containerRef} onClick={() => setOpen(o => !o)}>
       <span className="blot"><ProviderBlot provider={provider.id} /></span>
       <div>
         <div className="pname">{provider.name}</div>
@@ -101,18 +113,18 @@ const CouchScreen = () => {
       />
       <div className="chat-shell">
         <div className="chat-stream">
-          {CONVERSATION.map((m, i) => {
+          {CONVERSATION.map((m) => {
             const provider = m.provider ? PROVIDERS.find(p => p.id === m.provider) : null;
             return (
-              <div key={i} className={`msg ${m.role}`}>
+              <div key={m.id} className={`msg ${m.role}`}>
                 <div className="msg-blot">
-                  {m.role === "assistant"
+                  {m.role === "assistant" && provider
                     ? <ProviderBlot provider={provider.id} />
                     : <div style={{ width: "100%", height: "100%", background: "var(--paper-2)", border: "1px solid var(--rule)" }} />}
                 </div>
                 <div>
                   <div className="msg-author">
-                    {m.role === "user" ? "You · examiner" : `${provider.name} · ${m.model}`}
+                    {m.role === "user" ? "You · examiner" : `${provider?.name ?? "Unknown"} · ${m.model ?? ""}`}
                   </div>
                   <div className="msg-body"><p>{m.text}</p></div>
                 </div>
@@ -238,6 +250,9 @@ const NotesScreen = () => {
 
 /* ------------------------------------------------------------------ THE VAULT */
 const VaultScreen = () => {
+  const nameRef = React.useRef(null);
+  const urlRef = React.useRef(null);
+  const keyRef = React.useRef(null);
   return (
     <>
       <ScreenHead
@@ -303,9 +318,9 @@ const VaultScreen = () => {
       <div className="plate" style={{ padding: "var(--pad-lg)" }}>
         <div className="screen-eyebrow" style={{ marginBottom: "var(--pad-md)" }}>Add custom endpoint</div>
         <div className="grid c3">
-          <label className="field"><span className="lbl">Display name</span><input className="input" defaultValue="My vLLM box" /></label>
-          <label className="field"><span className="lbl">Base URL</span><input className="input" defaultValue="http://10.0.0.42:8000/v1" /></label>
-          <label className="field"><span className="lbl">API key (optional)</span><input className="input" type="password" defaultValue="••••••••" /></label>
+          <label className="field"><span className="lbl">Display name</span><input className="input" ref={nameRef} defaultValue="My vLLM box" /></label>
+          <label className="field"><span className="lbl">Base URL</span><input className="input" ref={urlRef} defaultValue="http://10.0.0.42:8000/v1" /></label>
+          <label className="field"><span className="lbl">API key (optional)</span><input className="input" type="password" ref={keyRef} defaultValue="••••••••" /></label>
         </div>
         <div style={{ display: "flex", gap: 8, marginTop: "var(--pad-md)" }}>
           <button className="btn ghost">Test connection</button>

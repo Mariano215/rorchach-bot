@@ -402,13 +402,14 @@ label.field .lbl {
 .chat-shell {
   display: grid;
   grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
   gap: var(--pad-md);
   height: calc(100vh - 220px);
   min-height: 520px;
 }
 .chat-stream {
-  flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding: var(--pad-md) var(--pad-lg);
   background: var(--bone);
   border: 1px solid var(--rule);

@@ -9,7 +9,7 @@
 //   • Apply processing-state shimmer (high-freq jitter)
 //   • Smoothstep eased card transition
 
-const { useEffect, useRef, useMemo } = React;
+const { useEffect, useRef, useMemo, useId } = React;
 
 function InkblotFace({
   cardIndex = 0,
@@ -25,6 +25,7 @@ function InkblotFace({
   // composition. So we override faceMode → blot when palette === "mask".
   const effectiveMode = palette === "mask" ? "blot" : faceMode;
   const deck = useMemo(() => window.Inkblot.buildDeck(10, effectiveMode), [effectiveMode]);
+  const uid = useId().replace(/:/g, '');
   const partRefs = useRef([]);
   const groupRef = useRef(null);
   const filterScaleRef = useRef(null);
@@ -52,10 +53,10 @@ function InkblotFace({
 
   useEffect(() => {
     const a = animRef.current;
-    a.fromIdx = a.toIdx;
-    a.toIdx = cardIndex;
+    a.fromIdx = Math.min(a.toIdx, deck.length - 1);
+    a.toIdx = Math.min(cardIndex, deck.length - 1);
     a.progress = 0;
-  }, [cardIndex]);
+  }, [cardIndex, deck]);
 
   // Animation loop
   useEffect(() => {
@@ -182,13 +183,13 @@ function InkblotFace({
       style={{ background: pal.bg }}
     >
       <defs>
-        <filter id="ink-bleed" x="-30%" y="-30%" width="160%" height="160%" filterUnits="objectBoundingBox">
+        <filter id={`ink-bleed-${uid}`} x="-30%" y="-30%" width="160%" height="160%" filterUnits="objectBoundingBox">
           <feTurbulence ref={turbRef} type="fractalNoise" baseFrequency="0.013 0.02" numOctaves="3" seed="7" result="noise" />
           <feDisplacementMap ref={filterScaleRef} in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G" result="disp" />
           <feGaussianBlur in="disp" stdDeviation="0.7" />
         </filter>
         {/* Heavier "bleed-through-mask" filter: more turbulence + soft edge */}
-        <filter id="ink-soak" x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
+        <filter id={`ink-soak-${uid}`} x="-40%" y="-40%" width="180%" height="180%" filterUnits="objectBoundingBox">
           <feTurbulence type="fractalNoise" baseFrequency="0.018 0.026" numOctaves="4" seed="11" result="n2" />
           <feDisplacementMap in="SourceGraphic" in2="n2" scale="14" xChannelSelector="R" yChannelSelector="G" result="d2" />
           <feGaussianBlur in="d2" stdDeviation="2.4" result="b2" />
@@ -196,25 +197,25 @@ function InkblotFace({
             <feFuncA type="gamma" amplitude="1" exponent="0.85" offset="0" />
           </feComponentTransfer>
         </filter>
-        <radialGradient id="vignette" cx="0.5" cy="0.5" r="0.7">
+        <radialGradient id={`vignette-${uid}`} cx="0.5" cy="0.5" r="0.7">
           <stop offset="0%" stopColor={pal.glow} />
           <stop offset="60%" stopColor="rgba(0,0,0,0)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0.6)" />
         </radialGradient>
-        <radialGradient id="floor-shadow" cx="0.5" cy="0.5" r="0.5">
+        <radialGradient id={`floor-shadow-${uid}`} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0%" stopColor="rgba(0,0,0,0.45)" />
           <stop offset="100%" stopColor="rgba(0,0,0,0)" />
         </radialGradient>
         {showMask && (
           <>
             {/* Mask body: warm off-white with side shading */}
-            <radialGradient id="mask-body" cx="0.5" cy="0.42" r="0.55">
+            <radialGradient id={`mask-body-${uid}`} cx="0.5" cy="0.42" r="0.55">
               <stop offset="0%" stopColor={pal.mask.fill} />
               <stop offset="70%" stopColor={pal.mask.fill} />
               <stop offset="100%" stopColor={pal.mask.shadow} />
             </radialGradient>
             {/* Subtle eye-socket darkening (sells skull form) */}
-            <radialGradient id="mask-socket-l" cx="0.5" cy="0.5" r="0.5">
+            <radialGradient id={`mask-socket-l-${uid}`} cx="0.5" cy="0.5" r="0.5">
               <stop offset="0%" stopColor="rgba(58,53,48,0.55)" />
               <stop offset="100%" stopColor="rgba(58,53,48,0)" />
             </radialGradient>
@@ -222,8 +223,8 @@ function InkblotFace({
         )}
       </defs>
 
-      <rect width="1000" height="1000" fill="url(#vignette)" />
-      <ellipse cx="500" cy="900" rx="220" ry="18" fill="url(#floor-shadow)" />
+      <rect width="1000" height="1000" fill={`url(#vignette-${uid})`} />
+      <ellipse cx="500" cy="900" rx="220" ry="18" fill={`url(#floor-shadow-${uid})`} />
 
       {showMask && (
         <g>
@@ -236,13 +237,13 @@ function InkblotFace({
                C 540 898, 460 898, 420 870
                C 300 790, 240 640, 240 470
                C 240 270, 340 130, 500 130 Z"
-            fill="url(#mask-body)"
+            fill={`url(#mask-body-${uid})`}
             stroke={pal.mask.shadow}
             strokeWidth="1.5"
           />
           {/* eye-socket faint hollows */}
-          <ellipse cx="420" cy="445" rx="60" ry="42" fill="url(#mask-socket-l)" />
-          <ellipse cx="580" cy="445" rx="60" ry="42" fill="url(#mask-socket-l)" />
+          <ellipse cx="420" cy="445" rx="60" ry="42" fill={`url(#mask-socket-l-${uid})`} />
+          <ellipse cx="580" cy="445" rx="60" ry="42" fill={`url(#mask-socket-l-${uid})`} />
           {/* Specular highlight on the temple */}
           <ellipse cx="380" cy="280" rx="55" ry="90" fill="rgba(255,255,255,0.35)" />
           <ellipse cx="610" cy="260" rx="35" ry="60" fill="rgba(255,255,255,0.2)" />
@@ -252,7 +253,7 @@ function InkblotFace({
       )}
 
       <g ref={groupRef} transform={blotTransform}>
-        <g filter={showMask ? "url(#ink-soak)" : "url(#ink-bleed)"}
+        <g filter={showMask ? `url(#ink-soak-${uid})` : `url(#ink-bleed-${uid})`}
            opacity={showMask ? 0.92 : 1}
            style={showMask ? { mixBlendMode: "multiply" } : null}>
           {!showMask && specks.map((s, i) => (
