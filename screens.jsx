@@ -13,7 +13,7 @@ const ScreenHead = ({ eyebrow, title, blurb, actions }) => (
 
 /* ------------------------------------------------------------------ THE PLATES */
 const PlatesScreen = ({ onOpenChat, onOpenVault }) => {
-  const [selected, setSelected] = React.useState("anthropic");
+  const [selected, setSelected] = React.useState("ollama");
   return (
     <>
       <ScreenHead
@@ -100,49 +100,197 @@ const ModelPicker = ({ value, onChange }) => {
   );
 };
 
+/* ------------------------------------------------------------------ THE COUCH (Inkblot voice chatbot) */
+
+const TAILSCALE_IP = "100.120.203.53";
+
+const REAL_CFG = {
+  ttsUrl:            "http://localhost:8080/chatterbox",
+  ttsPath:           "/v1/tts",
+  ttsVoice:          "Rorchach",
+  whisperUrl:        "http://localhost:8080/whisper",
+  ollamaUrl:         `http://${TAILSCALE_IP}:11434`,
+  ollamaModel:       "qwen2.5:7b",
+  ttsReferenceAudio: "voice-ref/Rorschach.mp3",
+  ttsExaggeration:   0.7,
+  ttsCfgWeight:      0.35,
+  ttsTemperature:    0.6,
+  temperature:       0.7,
+  maxTokens:         120,
+};
+
+const MOCK_CFG = {
+  ttsUrl:      "speech",
+  whisperUrl:  `http://${TAILSCALE_IP}:8010`,
+  ollamaUrl:   `http://${TAILSCALE_IP}:11434`,
+  ollamaModel: "qwen2.5:7b",
+  temperature: 0.7,
+  maxTokens:   120,
+};
+
+// Map voice state to face card index (0–9 available)
+const STATE_CARD = { idle: 0, listening: 2, thinking: 5, speaking: 8 };
+
 const CouchScreen = () => {
-  const [active, setActive] = React.useState({ providerId: "anthropic", model: "claude-sonnet-4-5" });
-  const [draft, setDraft] = React.useState("Compare your reading of plate III to OpenAI's. One paragraph each.");
+  const pipeRef    = React.useRef(null);
+  const [voiceState, setVoiceState] = React.useState("idle");
+  const [amplitude, setAmplitude]   = React.useState(0);
+  const [subtitle,  setSubtitle]    = React.useState("");
+  const [userLine,  setUserLine]    = React.useState("");
+  const [err,       setErr]         = React.useState("");
+  const [mockMode,  setMockMode]    = React.useState(true);
+
+  // Init pipeline once
+  React.useEffect(() => {
+    if (!window.createPipeline) {
+      setErr("voice.js not loaded.");
+      return;
+    }
+    const pipe = window.createPipeline({
+      onState:      setVoiceState,
+      onAmplitude:  setAmplitude,
+      onSubtitle:   (t) => { if (t) setSubtitle(t); },
+      onUserText:   (t) => setUserLine(t),
+      onAgentToken: () => {},
+      onError:      (e) => { setErr(e); setTimeout(() => setErr(""), 8000); },
+    });
+    pipe.updateConfig(MOCK_CFG);   // default: mock mode
+    pipeRef.current = pipe;
+    return () => pipe.dispose();
+  }, []);
+
+  // Switch config when mock toggle changes
+  React.useEffect(() => {
+    pipeRef.current?.updateConfig(mockMode ? MOCK_CFG : REAL_CFG);
+  }, [mockMode]);
+
+  const toggle = () => {
+    const pipe = pipeRef.current;
+    if (!pipe) return;
+    setErr("");
+    if (voiceState === "listening")                        pipe.stopListening();
+    else if (voiceState === "idle")                        pipe.startListening();
+    else                                                   pipe.interrupt();
+  };
+
+  const MIC_LABEL = {
+    idle:      "◎  Speak",
+    listening: "●  Listening — click to send",
+    thinking:  "◌  Thinking…",
+    speaking:  "▶  Speaking — click to interrupt",
+  };
+
+  const faceReady = typeof window.InkblotFace !== "undefined";
 
   return (
     <>
       <ScreenHead
         eyebrow="II · The Couch"
         title="What do you see?"
-        blurb="Switch the model anywhere in the conversation — including mid-sentence. Each reply is signed by the plate that produced it."
+        blurb="The inkblot listens. Speak — it answers in character."
       />
-      <div className="chat-shell">
-        <div className="chat-stream">
-          {CONVERSATION.map((m) => {
-            const provider = m.provider ? PROVIDERS.find(p => p.id === m.provider) : null;
-            return (
-              <div key={m.id} className={`msg ${m.role}`}>
-                <div className="msg-blot">
-                  {m.role === "assistant" && provider
-                    ? <ProviderBlot provider={provider.id} />
-                    : <div style={{ width: "100%", height: "100%", background: "var(--paper-2)", border: "1px solid var(--rule)" }} />}
-                </div>
-                <div>
-                  <div className="msg-author">
-                    {m.role === "user" ? "You · examiner" : `${provider?.name ?? "Unknown"} · ${m.model ?? ""}`}
-                  </div>
-                  <div className="msg-body"><p>{m.text}</p></div>
-                </div>
+
+      {/* ── Face viewport ── */}
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center",
+        gap: "var(--pad-md)", paddingBottom: "var(--pad-lg)",
+      }}>
+
+        {/* Animated face */}
+        <div style={{
+          width: "min(480px, 90vw)", aspectRatio: "1",
+          borderRadius: 8, overflow: "hidden",
+          boxShadow: "0 4px 40px rgba(0,0,0,0.35)",
+        }}>
+          {faceReady
+            ? <window.InkblotFace
+                cardIndex={STATE_CARD[voiceState] ?? 0}
+                amplitude={amplitude}
+                state={voiceState}
+                palette="mask"
+                morphSpeed={1}
+                inkBleed={1}
+              />
+            : <div style={{
+                width: "100%", height: "100%",
+                background: "#08080a", display: "flex",
+                alignItems: "center", justifyContent: "center",
+                fontFamily: "var(--font-mono)", fontSize: 12,
+                color: "rgba(255,255,255,0.3)",
+              }}>
+                face.jsx not loaded
               </div>
-            );
-          })}
+          }
         </div>
-        <div className="composer">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <ModelPicker value={active} onChange={setActive} />
-            <textarea value={draft} onChange={e => setDraft(e.target.value)}
-              placeholder="Describe what you see…" />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch" }}>
-            <button className="btn ghost">⌥ Compare</button>
-            <button className="btn primary">Send →</button>
-          </div>
+
+        {/* Subtitle / user line */}
+        <div style={{
+          minHeight: 48, width: "min(480px, 90vw)",
+          textAlign: "center",
+        }}>
+          {userLine && (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--ink-3)", marginBottom: 4 }}>
+              You: {userLine}
+            </div>
+          )}
+          {subtitle && (
+            <div style={{
+              fontFamily: "var(--font-display)", fontStyle: "italic",
+              fontSize: 16, color: "var(--ink-1)", lineHeight: 1.5,
+            }}>
+              {subtitle}
+            </div>
+          )}
         </div>
+
+        {/* Error strip */}
+        {err && (
+          <div style={{
+            width: "min(480px, 90vw)",
+            fontFamily: "var(--font-mono)", fontSize: 11,
+            color: "var(--rust)", padding: "6px 10px",
+            background: "var(--paper-2)", borderLeft: "2px solid var(--rust)",
+          }}>
+            {err}
+          </div>
+        )}
+
+        {/* Mic button */}
+        <button
+          className={`btn ${voiceState === "idle" ? "primary" : "ghost"}`}
+          style={{ width: "min(480px, 90vw)", padding: "14px 0", fontSize: 15 }}
+          onClick={toggle}
+        >
+          {MIC_LABEL[voiceState] ?? voiceState}
+        </button>
+
+        {/* Mode + model row */}
+        <div style={{
+          width: "min(480px, 90vw)", display: "flex",
+          alignItems: "center", gap: 12,
+          fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--ink-3)",
+        }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+            <input type="checkbox" checked={mockMode}
+              onChange={e => setMockMode(e.target.checked)} />
+            MOCK MODE
+          </label>
+          <span style={{ color: "var(--rule)" }}>|</span>
+          {mockMode
+            ? <span>Web Speech API · mock LLM replies</span>
+            : <span>{TAILSCALE_IP} · Whisper :8010 · Ollama :11434 · Chatterbox :8095</span>
+          }
+        </div>
+
+        {!mockMode && (
+          <div style={{
+            width: "min(480px, 90vw)",
+            fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--ink-3)",
+            lineHeight: 1.8,
+          }}>
+            MODEL: {REAL_CFG.ollamaModel} · REF AUDIO: {REAL_CFG.ttsReferenceAudio}
+          </div>
+        )}
       </div>
     </>
   );

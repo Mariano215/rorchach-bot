@@ -102,13 +102,17 @@
     fd.append("file", blob, "speech.webm");
     fd.append("model", cfg.whisperModel || "whisper-1");
     fd.append("response_format", "json");
+    const whisperAbort = AbortSignal.timeout ? AbortSignal.timeout(10000)
+      : (() => { const c = new AbortController(); setTimeout(() => c.abort(), 10000); return c.signal; })();
     const res = await fetch(cfg.whisperUrl + "/v1/audio/transcriptions", {
       method: "POST",
       body: fd,
+      signal: whisperAbort,
     });
     if (!res.ok) throw new Error("STT " + res.status + " " + (await res.text()));
     const json = await res.json();
-    return (json.text || "").trim();
+    // Strip speaker diarization labels (SPEAKER_00:, [SPEAKER_00]:, etc.)
+    return (json.text || "").replace(/\[?SPEAKER_\d+\]?:\s*/g, "").trim();
   }
 
   // ────────────────────────────────────────────────────────────────────────
@@ -189,7 +193,10 @@
         temperature: cfg.ttsTemperature ?? 0.6,
       }),
     });
-    if (!res.ok) throw new Error("TTS " + res.status);
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error("TTS " + res.status + " " + body.slice(0, 200));
+    }
     return await res.blob();
   }
 
@@ -408,7 +415,7 @@
       const blob = await recorder.stop();
       // In mock mode we don't strictly need vadSpoke — Web Speech may have
       // captured even quiet speech below our amplitude threshold.
-      if (!vadSpoke && !cfg.mockMode) {
+      if (!vadSpoke && !cfg.mockMode && cfg.ttsUrl !== 'speech') {
         dbg("no speech detected, returning to idle");
         setState("idle"); emitAmp(0); return;
       }
@@ -416,7 +423,7 @@
       emitAmp(0);
       try {
         let userText;
-        if (cfg.mockMode) {
+        if (cfg.mockMode || cfg.ttsUrl === 'speech') {
           // Wait briefly for Web Speech to finalize.
           userText = await waitForMockResult(2500);
           dbg("mock STT result", { userText });
@@ -472,7 +479,7 @@
       setState("speaking");
       ttsAbort = new AbortController();
       try {
-        if (cfg.mockMode || cfg.useWebSpeech) {
+        if (cfg.mockMode || cfg.useWebSpeech || cfg.ttsUrl === 'speech') {
           await speakWeb(text, cfg, emitAmp, ttsAbort.signal);
         } else {
           const blob = await fetchTTS(text, cfg);
@@ -582,11 +589,11 @@
     const _start = startListening;
     const _stop = stopListening;
     async function startListeningWrapped() {
-      if (cfg.mockMode) startMockRecognition();
+      if (cfg.mockMode || cfg.ttsUrl === 'speech') startMockRecognition();
       return _start();
     }
     async function stopListeningWrapped() {
-      if (cfg.mockMode) stopMockRecognition();
+      if (cfg.mockMode || cfg.ttsUrl === 'speech') stopMockRecognition();
       return _stop();
     }
 

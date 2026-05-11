@@ -16,7 +16,7 @@ const InkFilter = ({ id, seed, freq = 0.025, scale = 70 }) => (
    `shapes` describes the cluster as ellipse params on the *left half* of the canvas.
    We render those clipped to x<=100, then mirror across x=100. Result is a 200x200 blot.
 */
-const Inkblot = ({ id, seed, shapes, freq, scale, accent, splatter = [] }) => {
+const InkblotShape = ({ id, seed, shapes, freq, scale, accent, splatter = [] }) => {
   const filterId = `ink-${id}`;
   const clipId = `clip-${id}`;
   const halfId = `half-${id}`;
@@ -144,7 +144,7 @@ const ProviderBlot = ({ provider, accent, className }) => {
   if (!cfg) return null;
   return (
     <span className={`blot ${className || ""}`} style={{ display: "inline-block", color: "var(--ink)" }}>
-      <Inkblot id={provider} accent={accent || "var(--rust)"} {...cfg} />
+      <InkblotShape id={provider} accent={accent || "var(--rust)"} {...cfg} />
     </span>
   );
 };
