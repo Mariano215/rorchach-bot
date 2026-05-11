@@ -116,7 +116,8 @@ const REAL_CFG = {
   ttsCfgWeight:      0.35,
   ttsTemperature:    0.6,
   temperature:       0.7,
-  maxTokens:         120,
+  maxTokens:         400,
+  replyLength:       "medium",
 };
 
 const MOCK_CFG = {
@@ -138,7 +139,7 @@ const CouchScreen = () => {
   const [subtitle,  setSubtitle]    = React.useState("");
   const [userLine,  setUserLine]    = React.useState("");
   const [err,       setErr]         = React.useState("");
-  const [mockMode,  setMockMode]    = React.useState(true);
+  const [mockMode,  setMockMode]    = React.useState(false);
 
   // Init pipeline once
   React.useEffect(() => {
